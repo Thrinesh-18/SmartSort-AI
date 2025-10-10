@@ -1,5 +1,5 @@
 """
-Test PlasticNet Model
+Test SmartSort-Ai Model
 Quick testing script to verify your trained model works
 """
 
@@ -132,7 +132,7 @@ def test_directory(model, directory):
 def main():
     print("""
     ╔═══════════════════════════════════════════════════╗
-    ║           PlasticNet Model Testing                ║
+    ║                SmartSort-Ai Model Testing         ║
     ╚═══════════════════════════════════════════════════╝
     """)
     
@@ -168,6 +168,7 @@ def main():
     else:
         print(f"❌ Path not found: {path}")
         sys.exit(1)
+
 
 if __name__ == '__main__':
     main()
