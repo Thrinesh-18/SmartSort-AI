@@ -1,5 +1,5 @@
 """
-PlasticNet FastAPI Backend
+SmartSort-AI FastAPI Backend
 Handles image upload, classification, and recycling facility lookup
 """
 
