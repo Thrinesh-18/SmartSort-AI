@@ -1,0 +1,18 @@
+# PlasticNet Backend Requirements
+
+# FastAPI and Server
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Machine Learning
+tensorflow==2.15.0
+pillow==10.1.0
+numpy==1.24.3
+
+# Database
+# (SQLite is built into Python)
+
+# Development
+pytest==7.4.3
+httpx==0.25.1  # For testing FastAPI endpoints

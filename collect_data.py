@@ -1,5 +1,5 @@
 """
-SmartSort-Ai Data Collection Script
+SmartSort-AI Data Collection Script
 Guides manual collection and organizes data into train/val splits
 """
 
