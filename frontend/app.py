@@ -557,7 +557,7 @@ with st.sidebar:
         if st.button(
             page_name,
             key=page_name,
-            use_container_width=True
+            width='stretch'
         ):
             st.session_state.current_page = page_name
             st.rerun()
@@ -617,7 +617,7 @@ if st.session_state.current_page == "🏠 Classify Plastic":
                 st.rerun()
 
         else:
-            if st.button("📷 Open Camera", key="open_camera_button", use_container_width=True):
+            if st.button("📷 Open Camera", key="open_camera_button", width='stretch'):
                 st.session_state.open_camera = True
                 st.rerun()
 
@@ -625,14 +625,14 @@ if st.session_state.current_page == "🏠 Classify Plastic":
 
         if image_source:
             image = Image.open(image_source)
-            st.image(image, caption="Uploaded Image", use_container_width=True)
+            st.image(image, caption="Uploaded Image", width='stretch')
 
             if st.button("❌ Remove Image", key="remove_uploaded_image"):
                 st.session_state.uploaded_image = None
                 st.session_state.classification_result = None
                 st.rerun()
 
-            if st.button("🔍 Classify Plastic", use_container_width=True):
+            if st.button("🔍 Classify Plastic", width='stretch'):
                 with st.spinner("🤖 Analyzing image..."):
                     image_source.seek(0)
                     result = classify_image(
