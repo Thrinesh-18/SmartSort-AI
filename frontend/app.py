@@ -1,8 +1,3 @@
-"""
-SmartSort-AI - Streamlit Frontend
-Beautiful, modern UI for AI-powered plastic waste classification
-"""
-
 import streamlit as st
 import requests
 from PIL import Image
@@ -11,7 +6,6 @@ import json
 from datetime import datetime
 import base64
 import os
-
 
 # ============================================
 # PAGE CONFIG
@@ -51,8 +45,6 @@ bg_image_base64 = get_background_image_base64()
 # ============================================
 # CUSTOM CSS
 # ============================================
-
-
 
 if bg_image_base64:
     background_style = f"""
@@ -464,6 +456,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
+
 # ============================================
 # CONFIGURATION
 # ============================================
@@ -481,7 +474,7 @@ if 'current_page' not in st.session_state:
     st.session_state.current_page = "🏠 Classify Plastic"
 if 'open_camera' not in st.session_state:
     st.session_state.open_camera = False
-# Set default location values for backend calls
+
 latitude = 12.9716
 longitude = 77.5946
 
@@ -497,9 +490,7 @@ def classify_image(image_file, latitude=None, longitude=None):
         if latitude and longitude:
             params['latitude'] = latitude
             params['longitude'] = longitude
-        
         response = requests.post(f"{API_URL}/classify", files=files, params=params)
-        
         if response.status_code == 200:
             return response.json()
         else:
@@ -511,25 +502,6 @@ def classify_image(image_file, latitude=None, longitude=None):
         return None
     except Exception as e:
         st.error(f"Error: {str(e)}")
-        return None
-
-def get_facilities(latitude, longitude, plastic_type=None, radius_km=10):
-    """Get nearby recycling facilities"""
-    try:
-        params = {
-            'latitude': latitude,
-            'longitude': longitude,
-            'radius_km': radius_km
-        }
-        if plastic_type:
-            params['plastic_type'] = plastic_type
-        
-        response = requests.get(f"{API_URL}/facilities", params=params)
-        
-        if response.status_code == 200:
-            return response.json()
-        return None
-    except:
         return None
 
 def get_stats():
@@ -550,6 +522,7 @@ def get_color_for_type(plastic_type):
         'OTHER': '#757575'
     }
     return colors.get(plastic_type, '#757575')
+
 
 # ============================================
 # HEADER
@@ -572,18 +545,15 @@ st.markdown("""
 with st.sidebar:
     st.markdown("### 🎯 Navigation")
     
-    # Navigation buttons
     pages = [
         ("🏠 Classify Plastic", "🏠 Classify Plastic"),
-        ("📊 Statistics", "📊 Statistics"), 
-        ("📍 Find Facilities", "📍 Find Facilities"),
+        ("📊 Statistics", "📊 Statistics"),
         ("📖 Learn More", "📖 Learn More")
     ]
     
     for icon, page_name in pages:
         is_active = st.session_state.current_page == page_name
         button_class = "nav-button active" if is_active else "nav-button"
-        
         if st.button(
             page_name,
             key=page_name,
@@ -592,9 +562,6 @@ with st.sidebar:
             st.session_state.current_page = page_name
             st.rerun()
     
-    
-    
-    # System status
     st.markdown("### 🔌 System Status")
     try:
         response = requests.get(f"{API_URL}/health", timeout=2)
@@ -611,11 +578,10 @@ with st.sidebar:
         st.error("❌ Backend Offline")
         st.caption("Run: `python backend/main.py`")
 
+
 # ============================================
 # PAGE: CLASSIFY PLASTIC
 # ============================================
-
-# ... [all code above unchanged] ...
 
 if st.session_state.current_page == "🏠 Classify Plastic":
 
@@ -636,58 +602,43 @@ if st.session_state.current_page == "🏠 Classify Plastic":
         </div>
         """, unsafe_allow_html=True)
 
-        # Image upload
         uploaded_file = st.file_uploader(
             "Choose an image...",
             type=['jpg', 'jpeg', 'png'],
             help="Upload a clear photo of plastic waste"
         )
 
-        # ============ CAMERA BUTTON FEATURE ============
-        
-
         camera_image = None
         if st.session_state.open_camera:
             camera_image = st.camera_input("Take a photo with your camera", key="camera_input")
             if camera_image:
                 st.session_state.uploaded_image = camera_image
-                st.session_state.open_camera = False  # Close camera after photo, back to button view
+                st.session_state.open_camera = False
                 st.rerun()
-
 
         else:
             if st.button("📷 Open Camera", key="open_camera_button", use_container_width=True):
                 st.session_state.open_camera = True
                 st.rerun()
 
-          # Camera closes after photo
-
-        # Use camera image if available, otherwise uploaded file
-        # Use saved camera image from session state or uploaded file
         image_source = st.session_state.uploaded_image if st.session_state.uploaded_image else uploaded_file
-
 
         if image_source:
             image = Image.open(image_source)
             st.image(image, caption="Uploaded Image", use_container_width=True)
 
             if st.button("❌ Remove Image", key="remove_uploaded_image"):
-                st.session_state.uploaded_image = None      # Clear saved image
-                st.session_state.classification_result = None  # Clear results
-                st.rerun()  # Refresh UI
+                st.session_state.uploaded_image = None
+                st.session_state.classification_result = None
+                st.rerun()
 
-
-
-            # Classify button
             if st.button("🔍 Classify Plastic", use_container_width=True):
                 with st.spinner("🤖 Analyzing image..."):
                     image_source.seek(0)
-                    # Classify
                     result = classify_image(
                         image_source,
                         latitude,
                         longitude)
-
 
                     if result and result.get('success'):
                         st.session_state.classification_result = result
@@ -699,7 +650,6 @@ if st.session_state.current_page == "🏠 Classify Plastic":
         if st.session_state.classification_result:
             result = st.session_state.classification_result
 
-            # Plastic type badge
             mapping = {
                 'OTHER': 'PET',
                 'PET': 'HDPE',
@@ -734,56 +684,54 @@ if st.session_state.current_page == "🏠 Classify Plastic":
                     ],
                     "material_value": "Estimated value: ₹2.48 per kg ($0.03/kg)",
                     "acceptance": "⚠️ Not accepted in most curbside recycling programs"
-                    },
-                    'PET': {
-                        "common_items": [
-                            "Water bottles",
-                            "Soda bottles",
-                            "Food containers",
-                            "Peanut butter jars",
-                            "Salad containers"
-                        ],
-                        "instructions": "Rinse clean, remove caps and labels, flatten bottles before recycling",
-                        "tips": [
-                            "✅ Most widely recycled plastic worldwide",
-                            "♻️ Can be recycled into fleece, carpet, new bottles, and clothing",
-                            "⚠️ Remove labels if possible for better recycling",
-                            "💡 Look for the #1 symbol inside the recycling triangle"
-                        ],
-                        "material_value": "Estimated value: ₹9.96 per kg ($0.12/kg)",
-                        "acceptance": "✅ Accepted in curbside recycling"
-                    },
-                    'HDPE': {
-                        "common_items": [
-                            "Milk jugs",
-                            "Detergent bottles",
-                            "Shampoo bottles",
-                            "Toy parts",
-                            "Pipe fittings"
-                        ],
-                        "instructions": "Rinse clean, remove caps, bottles can be recycled with lids in some programs",
-                        "tips": [
-                            "✅ Very valuable to recyclers",
-                            "♻️ Used for plastic lumber, piping, new bottles",
-                            "💡 Look for #2 symbol inside the triangle"
-                        ],
-                        "material_value": "Estimated value: ₹13.20 per kg ($0.16/kg)",
-                        "acceptance": "✅ Accepted in most curbside recycling programs"
-                    }
+                },
+                'PET': {
+                    "common_items": [
+                        "Water bottles",
+                        "Soda bottles",
+                        "Food containers",
+                        "Peanut butter jars",
+                        "Salad containers"
+                    ],
+                    "instructions": "Rinse clean, remove caps and labels, flatten bottles before recycling",
+                    "tips": [
+                        "✅ Most widely recycled plastic worldwide",
+                        "♻️ Can be recycled into fleece, carpet, new bottles, and clothing",
+                        "⚠️ Remove labels if possible for better recycling",
+                        "💡 Look for the #1 symbol inside the recycling triangle"
+                    ],
+                    "material_value": "Estimated value: ₹9.96 per kg ($0.12/kg)",
+                    "acceptance": "✅ Accepted in curbside recycling"
+                },
+                'HDPE': {
+                    "common_items": [
+                        "Milk jugs",
+                        "Detergent bottles",
+                        "Shampoo bottles",
+                        "Toy parts",
+                        "Pipe fittings"
+                    ],
+                    "instructions": "Rinse clean, remove caps, bottles can be recycled with lids in some programs",
+                    "tips": [
+                        "✅ Very valuable to recyclers",
+                        "♻️ Used for plastic lumber, piping, new bottles",
+                        "💡 Look for #2 symbol inside the triangle"
+                    ],
+                    "material_value": "Estimated value: ₹13.20 per kg ($0.16/kg)",
+                    "acceptance": "✅ Accepted in most curbside recycling programs"
                 }
+            }
             display_content = result_content.get(plastic_type, result_content['PET'])
             
-            # Map recycling code for display only
             display_code_map = {
-                '7': '1',  
+                '7': '1',
                 '1': '2',
                 '2': '7',
             }
 
-            original_code = result['recycling_code'].lstrip('#')  # remove leading '#'
+            original_code = result['recycling_code'].lstrip('#')
             mapped_code = display_code_map.get(original_code, original_code)
             display_recycling_code = f"#{mapped_code}"
-
 
             st.markdown(f"""
                 <div class="result-card">
@@ -797,7 +745,6 @@ if st.session_state.current_page == "🏠 Classify Plastic":
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Confidence bar
             confidence = result['confidence'] * 100
             st.markdown(f"""
             <div class="confidence-bar">
@@ -807,11 +754,9 @@ if st.session_state.current_page == "🏠 Classify Plastic":
             </div>
             """, unsafe_allow_html=True)
 
+            mapped_type = plastic_type
 
-            # Recyclability info
-            mapped_type = plastic_type  # `plastic_type` is your mapped classification label
-
-            if mapped_type == "OTHER":  # Other (#7)
+            if mapped_type == "OTHER":  
                 box_class = "warning-box"
                 icon = "⚠️"
                 recyclability_display = "Low"
@@ -827,14 +772,12 @@ if st.session_state.current_page == "🏠 Classify Plastic":
                     box_class = "warning-box"
                     icon = "⚠️"
 
-
             st.markdown(f"""
             <div class="{box_class}">
                 <strong>{icon} Recyclability: {recyclability_display}</strong>
             </div>
             """, unsafe_allow_html=True)
 
-            # Common items
             st.markdown("#### 📦 Common Items:")
             for item in display_content["common_items"]:
                 st.markdown(f"• {item}")
@@ -862,50 +805,6 @@ if st.session_state.current_page == "🏠 Classify Plastic":
             else:
                 st.warning(display_content["acceptance"])
 
-
-            # Nearby facilities
-            if plastic_type in ["PET", "HDPE"]:
-               st.markdown("#### 📍 Nearest Recycling Facilities:")
-               st.markdown(
-        """
-        <div class="facility-card">
-            <h4>Mysore Scrap Traders</h4>
-            <p style="margin:0; color: #000000;">📍 5.2 km away</p>
-            <p style="margin:0.3rem 0 0 0; color: #000000;">
-                3146, Convent Road, L Mohalla, Mysuru, Karnataka
-            </p>
-        </div>
-        <div class="facility-card">
-            <h4>Excel Recycling</h4>
-            <p style="margin:0; color: #000000;">📍 5.1 km away</p>
-            <p style="margin:0.3rem 0 0 0; color: #000000;">
-                110/A, CIIB Industrial Area, Banimantap A Layout, Banimantap
-            </p>
-        </div>
-        <div class="facility-card">
-            <h4>A Shams Warsi Scrap Traders</h4>
-            <p style="margin:0; color: #000000;">📍 6.9 km away</p>
-            <p style="margin:0.3rem 0 0 0; color: #000000;">
-                #192/1 Geetha Mandir Road, Opp Mini Gate, New Gujri Bazzar
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True)
-    
-            elif plastic_type == "OTHER":
-               st.markdown("#### 📍 Location:")
-               st.markdown(
-        """
-        <div class="facility-card">
-            <h4>Dump</h4>
-        </div>
-        """,
-        unsafe_allow_html=True)
-    
-
-# ... [rest of your code unchanged] ...
-
-
 # ============================================
 # PAGE: STATISTICS
 # ============================================
@@ -918,7 +817,6 @@ elif st.session_state.current_page == "📊 Statistics":
     if stats_data and stats_data.get('success'):
         stats = stats_data['statistics']
         
-        # Top row metrics
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -953,7 +851,6 @@ elif st.session_state.current_page == "📊 Statistics":
             </div>
             """, unsafe_allow_html=True)
         
-        # Classifications by type
         st.markdown("### 📈 Classifications by Plastic Type")
         
         by_type = stats.get('classifications_by_type', {})
@@ -977,43 +874,6 @@ elif st.session_state.current_page == "📊 Statistics":
     else:
         st.warning("Unable to fetch statistics")
 
-# ============================================
-# PAGE: FIND FACILITIES
-# ============================================
-elif st.session_state.current_page == "📍 Find Facilities":
-    st.markdown("## 📍 Find Recycling Facilities")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        search_lat = st.number_input("Latitude", value=12.9716, format="%.4f")
-        search_lon = st.number_input("Longitude", value=77.5946, format="%.4f")
-
-    with col2:
-        search_radius = st.slider("Search Radius (km)", 1, 50, 10)
-        plastic_filter = st.selectbox("Filter by plastic type", ["All", "PET", "HDPE", "OTHER"])
-
-    if st.button("🔍 Search Facilities", use_container_width=True):
-        with st.spinner("Searching..."):
-            st.success(f"✅ Found 3 facilities within {search_radius} km")
-
-            st.markdown("""
-            <div class="facility-card">
-                <h3 style="margin-top:0; color: #1976D2;">Mysore Scrap Traders</h3>
-                <p><strong>📍 Distance:</strong> 5.2 km</p>
-                <p><strong>📫 Address:</strong> 3146, Convent Road, L Mohalla, Mysuru, Karnataka</p>
-            </div>
-            <div class="facility-card">
-                <h3 style="margin-top:0; color: #1976D2;">Excel Recycling</h3>
-                <p><strong>📍 Distance:</strong> 5.1 km</p>
-                <p><strong>📫 Address:</strong> 110/A, CIIB Industrial Area, Bannimantap A Layout, Bannimantap,Mysuru</p>
-            </div>
-            <div class="facility-card">
-                <h3 style="margin-top:0; color: #1976D2;">A Shams Warsi Scrap Traders</h3>
-                <p><strong>📍 Distance:</strong> 6.9 km</p>
-                <p><strong>📫 Address:</strong> #192/1 Geetha Mandir Road, Opp Mini Gate, New Gujri Bazzar,Mysuru</p>
-            </div>
-            """, unsafe_allow_html=True)
 # ============================================
 # PAGE: LEARN MORE
 # ============================================
