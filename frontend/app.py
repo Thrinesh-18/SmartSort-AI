@@ -461,7 +461,7 @@ st.markdown(f"""
 # CONFIGURATION
 # ============================================
 
-API_URL = "http://localhost:8000"
+API_URL = "https://smartsort-ai.onrender.com"
 
 # Initialize session state
 if 'classification_result' not in st.session_state:
