@@ -17,6 +17,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+st.share_button("Share SmartSort-AI", text="Check out this AI plastic sorter!")
 
 # ============================================
 # BACKGROUND IMAGE SETUP
