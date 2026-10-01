@@ -1,955 +1,510 @@
 import streamlit as st
 import requests
 from PIL import Image
-import io
-import json
-from datetime import datetime
 import base64
 import os
 
 # ============================================
 # PAGE CONFIG
 # ============================================
-
 st.set_page_config(
-    page_title="SmartSort-AI - AI Plastic Classifier",
+    page_title="SmartSort-AI | Plastic Classifier",
     page_icon="♻️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed",
 )
 
-# ============================================
-# BACKGROUND IMAGE SETUP
-# ============================================
+API_URL = "https://smartsort-ai.onrender.com"
+latitude, longitude = 12.9716, 77.5946
 
+PAGES = ["🏠 Classify Plastic", "📊 Statistics", "📖 Learn More"]
+
+# ============================================
+# STYLES
+# ============================================
 @st.cache_data
 def get_background_image_base64():
-    """
-    Converts the bg.jpg image to base64 for CSS background
-    """
+    path = "frontend/assets/background_img.jpg"
     try:
-        # Look for bg.jpg in assets folder
-        image_path = "frontend/assets/background_img.jpg"
-        if os.path.exists(image_path):
-            with open(image_path, "rb") as f:
-                data = f.read()
-            return base64.b64encode(data).decode()
-        else:
-            return None
-    except Exception as e:
-        return None
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+    except Exception:
+        pass
+    return None
 
-# Get background image
-bg_image_base64 = get_background_image_base64()
+CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+:root{
+  --g:#15803d; --g-dark:#14532d; --g-soft:#ecfdf3; --ink:#0f172a; --muted:#64748b;
+  --line:#e2e8f0; --surface:#ffffff; --blue:#1d4ed8; --amber:#b45309; --amber-soft:#fffbeb;
+  --radius:14px;
+}
+html, body, .stApp{font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; color-scheme:light;}
+.stApp{background:#f6f8f7;}
+.block-container{max-width:1080px; padding:1.5rem 1.25rem 3rem;}
+#MainMenu, footer, header[data-testid="stHeader"]{visibility:hidden; height:0;}
 
-# ============================================
-# CUSTOM CSS
-# ============================================
+/* Text */
+[data-testid="stMarkdownContainer"] *, label, .stCaption, [data-testid="stWidgetLabel"] *{color:var(--ink);}
+.muted, .muted *{color:var(--muted) !important;}
+h2{font-size:1.35rem !important; font-weight:700 !important; letter-spacing:-0.01em; margin:0 0 .25rem !important;}
+h4{font-size:1rem !important; font-weight:600 !important; margin:1.25rem 0 .5rem !important;}
 
-if bg_image_base64:
-    background_style = f"""
-    .stApp {{
-        background-image: url("data:image/jpg;base64,{bg_image_base64}");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-        background-repeat: no-repeat;
-        position: relative;
-        min-height: 100vh;
-    }}
-    
-    .stApp::before {{
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.6);
-        pointer-events: none;
-        z-index: 0;
-    }}
-    """
-else:
-    background_style = """
-    .stApp {
-        background: linear-gradient(135deg, #E8F5E9 0%, #FFFFFF 30%, #F8FFFD 70%, #E8F5E9 100%) !important;
-        background-attachment: fixed !important;
-    }
-    """
+/* Hero */
+.stApp .hero{background:linear-gradient(120deg,#14532d,#15803d); border-radius:var(--radius); padding:1.75rem 2rem; margin-bottom:1rem;}
+.stApp .hero, .stApp .hero *{color:#fff !important;}
+.hero h1{font-size:2rem; font-weight:800; letter-spacing:-0.02em; margin:0; padding:0;}
+.hero p{margin:.35rem 0 0; font-size:1rem; opacity:.92;}
 
-st.markdown(f"""
-<style>
-    {background_style}
-    
-    /* Make sure content is above background */
-    .main .block-container {{
-        position: relative;
-        z-index: 1;
-    }}
-    
-    /* SET ALL MAIN CONTENT TEXT TO BLACK */
-    .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown ul, .stMarkdown ol {{
-        color: #000000 !important;
-    }}
-    
-    .stTitle, .stHeader, .stSubheader {{
-        color: #000000 !important;
-    }}
-    
-    .stText, .stWrite, .stInfo, .stSuccess, .stWarning, .stError {{
-        color: #000000 !important;
-    }}
-    
-    /* Specific text elements */
-    p, li, span, div {{
-        color: #000000 !important;
-    }}
-    
-    h1, h2, h3, h4, h5, h6 {{
-        color: #000000 !important;
-    }}
-    
-    /* Streamlit specific classes */
-    .css-1lcbmhc, .css-1outpf7, .css-1r6slb0 {{
-        color: #000000 !important;
-    }}
-    
-    /* FORM ELEMENTS - FIX BLACK BOX TEXT TO WHITE */
-    .stNumberInput input, .stSelectbox select, .stTextInput input {{
-        color: #ffffff !important;
-        background-color: #000000 !important;
-    }}
-    
-    .stNumberInput label, .stSelectbox label, .stSlider label, .stCheckbox label {{
-        color: #000000 !important;
-    }}
-    
-    /* File uploader text - fix black box text */
-    .stFileUploader label, .stFileUploader span, .stFileUploader div {{
-        color: #ffffff !important;
-    }}
-    
-    .uploadedFile {{
-        color: #ffffff !important;
-    }}
-    
-    .uploadedFile div, .uploadedFile span, .uploadedFile p {{
-        color: #ffffff !important;
-    }}
-    
-    /* Camera input text */
-    [data-testid="stCameraInput"] label, 
-    [data-testid="stCameraInput"] span, 
-    [data-testid="stCameraInput"] div {{
-        color: #ffffff !important;
-    }}
-    
-    /* File uploader area */
-    [data-testid="stFileUploader"] * {{
-        color: #ffffff !important;
-    }}
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] button {{
-        color: #000000 !important;
-    }}
-    
-    /* Expander */
-    .streamlit-expanderHeader {{
-        color: #000000 !important;
-    }}
-    
-    /* Caption */
-    .stCaption {{
-        color: #000000 !important;
-    }}
-    
-    /* Ensure all streamlit text elements are black */
-    .st-bb, .st-at, .st-ae, .st-af, .st-ag, .st-ah, .st-ai, .st-aj {{
-        color: #000000 !important;
-    }}
-    
-    /* Radio button labels */
-    .stRadio label {{
-        color: #000000 !important;
-    }}
-    
-    /* Metric cards text */
-    [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {{
-        color: #000000 !important;
-    }}
-    
-    /* Spinner text */
-    .stSpinner {{
-        color: #000000 !important;
-    }}
-    
-    /* SIDEBAR TEXT IN WHITE */
-    section[data-testid="stSidebar"] * {{
-        color: #ffffff !important;
-    }}
-    
-    section[data-testid="stSidebar"] .stMarkdown,
-    section[data-testid="stSidebar"] .stMarkdown p,
-    section[data-testid="stSidebar"] .stMarkdown li,
-    section[data-testid="stSidebar"] .stMarkdown ul,
-    section[data-testid="stSidebar"] .stMarkdown ol {{
-        color: #ffffff !important;
-    }}
-    
-    section[data-testid="stSidebar"] .stTitle,
-    section[data-testid="stSidebar"] .stHeader,
-    section[data-testid="stSidebar"] .stSubheader {{
-        color: #ffffff !important;
-    }}
-    
-    section[data-testid="stSidebar"] .stSuccess,
-    section[data-testid="stSidebar"] .stWarning,
-    section[data-testid="stSidebar"] .stError,
-    section[data-testid="stSidebar"] .stInfo {{
-        color: #ffffff !important;
-    }}
-    
-    section[data-testid="stSidebar"] .stCaption {{
-        color: #ffffff !important;
-    }}
-    
-    section[data-testid="stSidebar"] .stCheckbox label {{
-        color: #ffffff !important;
-    }}
-    
-    section[data-testid="stSidebar"] .stNumberInput label {{
-        color: #ffffff !important;
-    }}
-    
-    section[data-testid="stSidebar"] .streamlit-expanderHeader {{
-        color: #ffffff !important;
-    }}
-    
-    /* Main theme colors */
-    :root {{
-        --primary-green: #2E7D32;
-        --secondary-green: #1B5E20;
-        --light-green: #E8F5E9;
-        --accent-orange: #F57C00;
-    }}
-    
-    /* Sidebar background */
-    .css-1d391kg, .css-1lcbmhc {{
-        background-color: #1B5E20 !important;
-    }}
-    
-    /* Header styling */
-    .main-header {{
-        background: linear-gradient(135deg, #2E7D32 0%, #66BB6A 100%);
-        padding: 2rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }}
-    
-    .main-header h1 {{
-        margin: 0;
-        font-size: 2.5rem;
-        font-weight: 700;
-    }}
-    
-    .main-header p {{
-        margin: 0.5rem 0 0 0;
-        font-size: 1.1rem;
-        opacity: 0.95;
-    }}
-    
-    /* Navigation buttons */
-    .nav-button {{
-        width: 100%;
-        padding: 1rem;
-        margin: 0.5rem 0;
-        border: none;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 1rem;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background: #4CAF50;
-        color: white;
-    }}
-    
-    .nav-button:hover {{
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        background: #45a049;
-    }}
-    
-    .nav-button.active {{
-        background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
-        color: white;
-        box-shadow: 0 4px 12px rgba(245, 124, 0, 0.3);
-    }}
-    
-    /* Result card styling */
-    .result-card {{
-        background: white;
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-        margin: 1rem 0;
-        border-left: 5px solid var(--primary-green);
-        color: #000000 !important;
-    }}
-    
-    .result-card p, .result-card div, .result-card span {{
-        color: #000000 !important;
-    }}
-    
-    .plastic-type-badge {{
-        display: inline-block;
-        padding: 0.5rem 1.5rem;
-        border-radius: 25px;
-        font-weight: 600;
-        font-size: 1.3rem;
-        margin: 1rem 0;
-    }}
-    
-    .confidence-bar {{
-        background: #e0e0e0;
-        border-radius: 10px;
-        height: 30px;
-        margin: 1rem 0;
-        overflow: hidden;
-    }}
-    
-    .confidence-fill {{
-        height: 100%;
-        background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        transition: width 0.5s ease;
-    }}
-    
-    /* Facility card */
-    .facility-card {{
-        background: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        border-left: 4px solid #1976D2;
-        color: #000000 !important;
-    }}
-    
-    .facility-card h4 {{
-        margin: 0 0 0.5rem 0;
-        color: #1976D2;
-    }}
-    
-    /* Info boxes */
-    .info-box {{
-        background: #E3F2FD;
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        border-left: 3px solid #2196F3;
-        color: #000000 !important;
-    }}
-    
-    .warning-box {{
-        background: #FFF3E0;
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        border-left: 3px solid #FF9800;
-        color: #000000 !important;
-    }}
-    
-    .success-box {{
-        background: #E8F5E9;
-        padding: 1rem;
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        border-left: 3px solid #4CAF50;
-        color: #000000 !important;
-    }}
-    
-    /* Tip items */
-    .tip-item {{
-        background: white;
-        padding: 0.8rem;
-        margin: 0.5rem 0;
-        border-radius: 8px;
-        border-left: 3px solid #4CAF50;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        color: #000000 !important;
-    }}
-    
-    /* Stats styling */
-    .stat-box {{
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        text-align: center;
-        margin: 0.5rem 0;
-    }}
-    
-    .stat-number {{
-        font-size: 2rem;
-        font-weight: 700;
-        margin: 0;
-    }}
-    
-    .stat-label {{
-        font-size: 0.9rem;
-        opacity: 0.9;
-        margin: 0.5rem 0 0 0;
-    }}
-    
-    /* Button styling */
-    .stButton>button {{
-        background: linear-gradient(135deg, #2E7D32 0%, #66BB6A 100%);
-        color: white;
-        border: none;
-        padding: 0.8rem 2rem;
-        border-radius: 25px;
-        font-weight: 600;
-        font-size: 1.1rem;
-        transition: transform 0.2s;
-    }}
-    
-    .stButton>button:hover {{
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }}
-    
-    /* Hide Streamlit branding */
-    #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    
-    /* Camera upload styling */
-    .uploadedFile {{
-        border: 2px dashed #2E7D32;
-        border-radius: 10px;
-        padding: 2rem;
-        background-color: rgba(0, 0, 0, 0.8) !important;
-    }}
-    
-    /* Specific fix for file uploader text colors */
-    [data-testid="stFileUploader"] * {{
-        color: #ffffff !important;
-    }}
-    
-    .stFileUploader * {{
-        color: #ffffff !important;
-    }}
-    
-    /* Fix for camera input text */
-    [data-testid="stCameraInput"] * {{
-        color: #ffffff !important;
-    }}
-</style>
-""", unsafe_allow_html=True)
+/* Cards */
+[data-testid="stVerticalBlockBorderWrapper"]{background:var(--surface); border:1px solid var(--line) !important; border-radius:var(--radius) !important; box-shadow:0 1px 2px rgba(15,23,42,.04);}
+.stApp .badge{display:inline-block; padding:.35rem 1rem; border-radius:999px; font-weight:700; font-size:1.15rem; color:#fff;}
+.stApp .badge *{color:#fff !important;}
+.fullname{font-size:1.05rem; font-weight:600; margin:.5rem 0 1rem;}
+.bar{background:#e8eeea; border-radius:999px; height:12px; overflow:hidden;}
+.bar > div{height:100%; background:var(--g); border-radius:999px; transition:width .6s ease;}
+.barlabel{display:flex; justify-content:space-between; font-size:.85rem; margin:.9rem 0 .4rem; font-weight:600;}
 
+/* Info tiles */
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:.75rem; margin:1rem 0;}
+.tile{border:1px solid var(--line); border-radius:12px; padding:.85rem 1rem; background:#fff;}
+.tile small{display:block; color:var(--muted) !important; font-weight:600; font-size:.78rem; margin-bottom:.2rem;}
+.tile b{font-size:.98rem;}
+.tile.ok{background:var(--g-soft); border-color:#bbf7d0;}
+.tile.mid{background:#eff6ff; border-color:#bfdbfe;}
+.tile.low{background:var(--amber-soft); border-color:#fde68a;}
+
+/* Chips and tips */
+.chips{display:flex; flex-wrap:wrap; gap:.4rem;}
+.chip{padding:.3rem .8rem; border-radius:999px; background:#f1f5f9; border:1px solid var(--line); font-size:.88rem;}
+.note{background:var(--g-soft); border-left:4px solid var(--g); border-radius:10px; padding:.85rem 1rem; font-size:.95rem;}
+.tips{list-style:none; padding:0; margin:0; display:grid; gap:.5rem;}
+.tips li{padding:.65rem .9rem; border:1px solid var(--line); border-radius:10px; background:#fff; font-size:.93rem;}
+
+/* Empty state */
+.empty{text-align:center; padding:3rem 1rem;}
+.empty .ico{font-size:2.5rem;}
+.empty p{margin:.4rem 0 0;}
+
+/* Stats */
+.stat{background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:1.1rem 1.25rem;}
+.stat .n{font-size:1.9rem; font-weight:800; line-height:1.1; color:var(--g-dark) !important;}
+.stat .l{font-size:.85rem; color:var(--muted) !important; font-weight:500; margin-top:.25rem;}
+
+/* Buttons */
+.stButton>button{min-height:2.75rem; border-radius:10px; font-weight:600; border:1px solid var(--line); background:#fff; color:var(--ink); transition:background .15s, border-color .15s, box-shadow .15s;}
+.stButton>button:hover{border-color:var(--g); color:var(--g-dark); background:var(--g-soft);}
+.stButton>button[kind="primary"]{background:var(--g); border-color:var(--g); color:#fff;}
+.stButton>button[kind="primary"] *{color:#fff !important;}
+.stButton>button[kind="primary"]:hover{background:var(--g-dark); border-color:var(--g-dark);}
+button:focus-visible, input:focus-visible{outline:3px solid #86efac !important; outline-offset:2px;}
+
+/* Uploader */
+[data-testid="stFileUploaderDropzone"]{background:#f8fafc; border:2px dashed #cbd5e1; border-radius:12px;}
+[data-testid="stFileUploaderDropzone"]:hover{border-color:var(--g); background:var(--g-soft);}
+[data-testid="stFileUploaderDropzone"] *{color:var(--ink) !important;}
+[data-testid="stFileUploaderDropzone"] button{background:#fff; border:1px solid var(--line);}
+[data-testid="stImage"] img{border-radius:12px;}
+
+/* Tabs */
+.stTabs [data-baseweb="tab"]{font-weight:600;}
+.stTabs [aria-selected="true"]{color:var(--g-dark) !important;}
+.stTabs [data-baseweb="tab-highlight"]{background:var(--g);}
+
+/* Sidebar */
+section[data-testid="stSidebar"]{background:var(--g-dark);}
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *, section[data-testid="stSidebar"] .stCaption *{color:#e7f5ec !important;}
+.status{display:flex; align-items:center; gap:.5rem; padding:.35rem 0; font-size:.92rem;}
+.dot{width:.6rem; height:.6rem; border-radius:50%; display:inline-block;}
+.dot.on{background:#4ade80;} .dot.off{background:#f87171;} .dot.warn{background:#fbbf24;}
+
+.fade{animation:fade .35s ease;}
+@keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+
+@media (max-width:768px){
+  .block-container{padding:1rem .75rem 2rem;}
+  .hero{padding:1.25rem !important;} .hero h1{font-size:1.6rem;}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important; animation:none !important;}}
+"""
+
+bg = get_background_image_base64()
+if bg:
+    CSS += f""".stApp{{background-image:linear-gradient(rgba(246,248,247,.93),rgba(246,248,247,.93)),url("data:image/jpg;base64,{bg}");
+    background-size:cover; background-position:center; background-attachment:fixed;}}"""
+st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
 
 # ============================================
-# CONFIGURATION
+# SESSION STATE
 # ============================================
-
-API_URL = "https://smartsort-ai.onrender.com"
-
-# Initialize session state
-if 'classification_result' not in st.session_state:
-    st.session_state.classification_result = None
-if 'uploaded_image' not in st.session_state:
-    st.session_state.uploaded_image = None
-if 'history' not in st.session_state:
-    st.session_state.history = []
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = "🏠 Classify Plastic"
-if 'open_camera' not in st.session_state:
-    st.session_state.open_camera = False
-
-latitude = 12.9716
-longitude = 77.5946
+defaults = {
+    "classification_result": None,
+    "uploaded_image": None,
+    "history": [],
+    "current_page": PAGES[0],
+    "open_camera": False,
+}
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
 # ============================================
-# HELPER FUNCTIONS
+# HELPERS
 # ============================================
-
 def classify_image(image_file, latitude=None, longitude=None):
     """Send image to backend for classification"""
     try:
-        files = {'file': ('image.jpg', image_file, 'image/jpeg')}
+        files = {"file": ("image.jpg", image_file, "image/jpeg")}
         params = {}
         if latitude and longitude:
-            params['latitude'] = latitude
-            params['longitude'] = longitude
+            params["latitude"] = latitude
+            params["longitude"] = longitude
         response = requests.post(f"{API_URL}/classify", files=files, params=params)
         if response.status_code == 200:
             return response.json()
-        else:
-            st.error(f"Error: {response.status_code} - {response.text}")
-            return None
+        st.error(f"Classification failed ({response.status_code}). {response.text}")
+        return None
     except requests.exceptions.ConnectionError:
-        st.error("❌ Cannot connect to backend. Make sure the API is running on port 8000!")
+        st.error("Can't reach the backend. Check that the API is running, then try again.")
         st.info("Run: `cd backend && python main.py`")
         return None
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error(f"Something went wrong: {e}")
         return None
 
 def get_stats():
-    """Get system statistics"""
     try:
         response = requests.get(f"{API_URL}/stats")
-        if response.status_code == 200:
-            return response.json()
+        return response.json() if response.status_code == 200 else None
+    except Exception:
         return None
-    except:
+
+@st.cache_data(ttl=30, show_spinner=False)
+def get_health():
+    try:
+        r = requests.get(f"{API_URL}/health", timeout=2)
+        return {"ok": r.status_code == 200, "data": r.json() if r.status_code == 200 else {}}
+    except Exception:
         return None
 
 def get_color_for_type(plastic_type):
-    """Get color for plastic type"""
-    colors = {
-        'PET': '#2E7D32',
-        'HDPE': '#1976D2',
-        'OTHER': '#757575'
-    }
-    return colors.get(plastic_type, '#757575')
+    return {"PET": "#15803d", "HDPE": "#1d4ed8", "OTHER": "#64748b"}.get(plastic_type, "#64748b")
 
+def html(s):
+    st.markdown(s, unsafe_allow_html=True)
 
 # ============================================
-# HEADER
+# SIDEBAR (status + about)
 # ============================================
-
-st.markdown("""
-<div class="main-header">
-    <h1>♻️ SmartSort-AI</h1>
-    <p style=" font-style: italic; font-weight: 600; font-size: 1.3rem; margin: 0.2rem 0 1rem 0; color: #ffffff;">
-        One Scan can Save the Planet
-    </p>
-    <p>AI-Powered Plastic Waste Classification System</p>
-</div>
-""", unsafe_allow_html=True)
-
-# ============================================
-# SIDEBAR
-# ============================================
-
 with st.sidebar:
-    st.markdown("### 🎯 Navigation")
-    
-    pages = [
-        ("🏠 Classify Plastic", "🏠 Classify Plastic"),
-        ("📊 Statistics", "📊 Statistics"),
-        ("📖 Learn More", "📖 Learn More")
-    ]
-    
-    for icon, page_name in pages:
-        is_active = st.session_state.current_page == page_name
-        button_class = "nav-button active" if is_active else "nav-button"
-        if st.button(
-            page_name,
-            key=page_name,
-            width='stretch'
-        ):
-            st.session_state.current_page = page_name
-            st.rerun()
-    
-    st.markdown("### 🔌 System Status")
-    try:
-        response = requests.get(f"{API_URL}/health", timeout=2)
-        if response.status_code == 200:
-            st.success("✅ Backend Connected")
-            health = response.json()
-            if health.get('model_loaded'):
-                st.success("✅ AI Model Loaded")
-            else:
-                st.warning("⚠️ AI Model Not Loaded")
-        else:
-            st.error("❌ Backend Error")
-    except:
-        st.error("❌ Backend Offline")
+    st.markdown("### ♻️ SmartSort-AI")
+    st.markdown("**System status**")
+    health = get_health()
+    if health is None:
+        html('<div class="status"><span class="dot off"></span>Backend offline</div>')
         st.caption("Run: `python backend/main.py`")
-
+    elif not health["ok"]:
+        html('<div class="status"><span class="dot off"></span>Backend error</div>')
+    else:
+        html('<div class="status"><span class="dot on"></span>Backend connected</div>')
+        if health["data"].get("model_loaded"):
+            html('<div class="status"><span class="dot on"></span>AI model loaded</div>')
+        else:
+            html('<div class="status"><span class="dot warn"></span>AI model not loaded</div>')
+    st.caption("The free backend can take up to a minute to wake up after being idle.")
 
 # ============================================
-# PAGE: CLASSIFY PLASTIC
+# HEADER + NAVIGATION
 # ============================================
+html("""
+<div class="hero">
+  <h1>♻️ SmartSort-AI</h1>
+  <p><strong>One scan can save the planet.</strong> AI-powered plastic waste classification.</p>
+</div>
+""")
 
-if st.session_state.current_page == "🏠 Classify Plastic":
+nav_cols = st.columns(len(PAGES))
+for col, page in zip(nav_cols, PAGES):
+    with col:
+        active = st.session_state.current_page == page
+        if st.button(page, key=f"nav_{page}", width="stretch",
+                     type="primary" if active else "secondary"):
+            st.session_state.current_page = page
+            st.rerun()
 
-    st.markdown("## 📸 Upload Plastic Waste Image")
+st.write("")
 
-    col1, col2 = st.columns([1, 1])
+# ============================================
+# PAGE: CLASSIFY
+# ============================================
+if st.session_state.current_page == PAGES[0]:
+    col1, col2 = st.columns([1, 1], gap="large")
 
     with col1:
-        st.markdown("""
-        <div class="info-box">
-            <h4 style="margin-top:0; color: #000000;">📋 How to Use:</h4>
-            <ol style="margin-bottom:0; color: #000000;">
-                <li>Take a clear photo of the plastic item</li>
-                <li>Make sure the recycling symbol is visible (if present)</li>
-                <li>Upload the image below</li>
-                <li>Get instant classification results!</li>
-            </ol>
-        </div>
-        """, unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("## Upload an image")
+            st.caption("Photograph the plastic item with its recycling symbol visible, if it has one.")
 
-        uploaded_file = st.file_uploader(
-            "Choose an image...",
-            type=['jpg', 'jpeg', 'png'],
-            help="Upload a clear photo of plastic waste"
-        )
+            uploaded_file = st.file_uploader(
+                "Choose an image",
+                type=["jpg", "jpeg", "png"],
+                help="Upload a clear photo of plastic waste",
+                label_visibility="collapsed",
+            )
 
-        camera_image = None
-        if st.session_state.open_camera:
-            camera_image = st.camera_input("Take a photo with your camera", key="camera_input")
-            if camera_image:
-                st.session_state.uploaded_image = camera_image
-                st.session_state.open_camera = False
-                st.rerun()
+            if st.session_state.open_camera:
+                camera_image = st.camera_input("Take a photo with your camera", key="camera_input")
+                if camera_image:
+                    st.session_state.uploaded_image = camera_image
+                    st.session_state.open_camera = False
+                    st.rerun()
+            else:
+                if st.button("📷 Use camera instead", key="open_camera_button", width="stretch"):
+                    st.session_state.open_camera = True
+                    st.rerun()
 
-        else:
-            if st.button("📷 Open Camera", key="open_camera_button", width='stretch'):
-                st.session_state.open_camera = True
-                st.rerun()
+            image_source = st.session_state.uploaded_image if st.session_state.uploaded_image else uploaded_file
 
-        image_source = st.session_state.uploaded_image if st.session_state.uploaded_image else uploaded_file
+            if image_source:
+                image = Image.open(image_source)
+                st.image(image, caption="Your image", width="stretch")
 
-        if image_source:
-            image = Image.open(image_source)
-            st.image(image, caption="Uploaded Image", width='stretch')
-
-            if st.button("❌ Remove Image", key="remove_uploaded_image"):
-                st.session_state.uploaded_image = None
-                st.session_state.classification_result = None
-                st.rerun()
-
-            if st.button("🔍 Classify Plastic", width='stretch'):
-                with st.spinner("🤖 Analyzing image..."):
-                    image_source.seek(0)
-                    result = classify_image(
-                        image_source,
-                        latitude,
-                        longitude)
-
-                    if result and result.get('success'):
-                        st.session_state.classification_result = result
-                        st.session_state.uploaded_image = image_source
-                        st.success("✅ Classification complete!")
+                b1, b2 = st.columns([2, 1])
+                with b1:
+                    classify_clicked = st.button("🔍 Classify plastic", type="primary", width="stretch")
+                with b2:
+                    if st.button("Remove", key="remove_uploaded_image", width="stretch"):
+                        st.session_state.uploaded_image = None
+                        st.session_state.classification_result = None
                         st.rerun()
 
+                if classify_clicked:
+                    with st.spinner("Analyzing image..."):
+                        image_source.seek(0)
+                        result = classify_image(image_source, latitude, longitude)
+                        if result and result.get("success"):
+                            st.session_state.classification_result = result
+                            st.session_state.uploaded_image = image_source
+                            st.rerun()
+
     with col2:
-        if st.session_state.classification_result:
+        if not st.session_state.classification_result:
+            with st.container(border=True):
+                html("""
+                <div class="empty">
+                  <div class="ico">🔎</div>
+                  <h2>No result yet</h2>
+                  <p class="muted">Upload or capture a photo, then select <b>Classify plastic</b>.
+                  Your plastic type, recyclability and disposal tips will show up here.</p>
+                </div>
+                """)
+        else:
             result = st.session_state.classification_result
 
-            mapping = {
-                'OTHER': 'PET',
-                'PET': 'HDPE',
-                'HDPE': 'OTHER'
-            }
-
+            mapping = {"OTHER": "PET", "PET": "HDPE", "HDPE": "OTHER"}
             full_name_mapping = {
-                'OTHER': "Polyethylene Terephthalate",
-                'PET': "High-Density Polyethylene",
-                'HDPE': "Mixed Plastics"
+                "OTHER": "Polyethylene Terephthalate",
+                "PET": "High-Density Polyethylene",
+                "HDPE": "Mixed Plastics",
             }
 
-            original_type = result['predicted_class']
+            original_type = result["predicted_class"]
             plastic_type = mapping.get(original_type, original_type)
             color = get_color_for_type(plastic_type)
-            mapped_full_name = full_name_mapping.get(original_type, result['full_name'])
+            mapped_full_name = full_name_mapping.get(original_type, result["full_name"])
 
             result_content = {
-                'OTHER': {
-                    "common_items": [
-                        "Plastic bags",
-                        "Styrofoam",
-                        "Multi-layer packaging",
-                        "CD cases",
-                        "Acrylic materials"
-                    ],
+                "OTHER": {
+                    "common_items": ["Plastic bags", "Styrofoam", "Multi-layer packaging", "CD cases", "Acrylic materials"],
                     "instructions": "Check locally before recycling. Many #7 plastics are not accepted in curbside programs.",
                     "tips": [
                         "🚫 Avoid mixing #7 plastics with #1 or #2",
                         "⚠️ Try to reduce usage of mixed plastics",
-                        "💡 Look for recycling drop-off locations specializing in #7"
+                        "💡 Look for recycling drop-off locations specializing in #7",
                     ],
-                    "material_value": "Estimated value: ₹2.48 per kg ($0.03/kg)",
-                    "acceptance": "⚠️ Not accepted in most curbside recycling programs"
+                    "material_value": "₹2.48 per kg ($0.03/kg)",
+                    "acceptance": "⚠️ Not accepted in most curbside recycling programs",
                 },
-                'PET': {
-                    "common_items": [
-                        "Water bottles",
-                        "Soda bottles",
-                        "Food containers",
-                        "Peanut butter jars",
-                        "Salad containers"
-                    ],
+                "PET": {
+                    "common_items": ["Water bottles", "Soda bottles", "Food containers", "Peanut butter jars", "Salad containers"],
                     "instructions": "Rinse clean, remove caps and labels, flatten bottles before recycling",
                     "tips": [
                         "✅ Most widely recycled plastic worldwide",
                         "♻️ Can be recycled into fleece, carpet, new bottles, and clothing",
                         "⚠️ Remove labels if possible for better recycling",
-                        "💡 Look for the #1 symbol inside the recycling triangle"
+                        "💡 Look for the #1 symbol inside the recycling triangle",
                     ],
-                    "material_value": "Estimated value: ₹9.96 per kg ($0.12/kg)",
-                    "acceptance": "✅ Accepted in curbside recycling"
+                    "material_value": "₹9.96 per kg ($0.12/kg)",
+                    "acceptance": "✅ Accepted in curbside recycling",
                 },
-                'HDPE': {
-                    "common_items": [
-                        "Milk jugs",
-                        "Detergent bottles",
-                        "Shampoo bottles",
-                        "Toy parts",
-                        "Pipe fittings"
-                    ],
+                "HDPE": {
+                    "common_items": ["Milk jugs", "Detergent bottles", "Shampoo bottles", "Toy parts", "Pipe fittings"],
                     "instructions": "Rinse clean, remove caps, bottles can be recycled with lids in some programs",
                     "tips": [
                         "✅ Very valuable to recyclers",
                         "♻️ Used for plastic lumber, piping, new bottles",
-                        "💡 Look for #2 symbol inside the triangle"
+                        "💡 Look for #2 symbol inside the triangle",
                     ],
-                    "material_value": "Estimated value: ₹13.20 per kg ($0.16/kg)",
-                    "acceptance": "✅ Accepted in most curbside recycling programs"
-                }
+                    "material_value": "₹13.20 per kg ($0.16/kg)",
+                    "acceptance": "✅ Accepted in most curbside recycling programs",
+                },
             }
-            display_content = result_content.get(plastic_type, result_content['PET'])
-            
-            display_code_map = {
-                '7': '1',
-                '1': '2',
-                '2': '7',
-            }
+            display_content = result_content.get(plastic_type, result_content["PET"])
 
-            original_code = result['recycling_code'].lstrip('#')
-            mapped_code = display_code_map.get(original_code, original_code)
-            display_recycling_code = f"#{mapped_code}"
+            display_code_map = {"7": "1", "1": "2", "2": "7"}
+            original_code = result["recycling_code"].lstrip("#")
+            display_recycling_code = f"#{display_code_map.get(original_code, original_code)}"
 
-            st.markdown(f"""
-                <div class="result-card">
-                    <h2 style="margin-top:0; color: {color};">Classification Result</h2>
-                    <div class="plastic-type-badge" style="background-color: {color}; color: white;">
-                        {plastic_type} {display_recycling_code}
-                    </div>
-                    <p style="font-size: 1.1rem; margin: 0.5rem 0; color: #000000;">
-                        <strong>{mapped_full_name}</strong>
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
+            confidence = max(0, min(100, result["confidence"] * 100))
 
-            confidence = result['confidence'] * 100
-            st.markdown(f"""
-            <div class="confidence-bar">
-                <div class="confidence-fill" style="width: {confidence}%;">
-                    {confidence:.1f}% Confident
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            mapped_type = plastic_type
-
-            if mapped_type == "OTHER":  
-                box_class = "warning-box"
-                icon = "⚠️"
-                recyclability_display = "Low"
+            if plastic_type == "OTHER":
+                tile_class, icon, recyclability_display = "low", "⚠️", "Low"
             else:
-                recyclability_display = result['recyclability']
-                if recyclability_display == "High":
-                    box_class = "success-box"
-                    icon = "✅"
-                elif recyclability_display == "Medium":
-                    box_class = "info-box"
-                    icon = "ℹ️"
-                else:
-                    box_class = "warning-box"
-                    icon = "⚠️"
+                recyclability_display = result["recyclability"]
+                tile_class, icon = {
+                    "High": ("ok", "✅"),
+                    "Medium": ("mid", "ℹ️"),
+                }.get(recyclability_display, ("low", "⚠️"))
 
-            st.markdown(f"""
-            <div class="{box_class}">
-                <strong>{icon} Recyclability: {recyclability_display}</strong>
-            </div>
-            """, unsafe_allow_html=True)
+            accepted = "Accepted" in display_content["acceptance"]
+            accept_class = "ok" if accepted else "low"
+            accept_text = display_content["acceptance"].lstrip("✅⚠️ ").strip()
 
-            st.markdown("#### 📦 Common Items:")
-            for item in display_content["common_items"]:
-                st.markdown(f"• {item}")
-
-            st.markdown("#### ♻️ Recycling Instructions:")
-            st.markdown(f"""
-            <div class="info-box">
-                {display_content["instructions"]}
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown("#### 💡 Recycling Tips:")
-            for tip in display_content["tips"]:
-                st.markdown(f"""
-                <div class="tip-item">
-                    {tip}
+            with st.container(border=True):
+                html(f"""
+                <div class="fade">
+                  <span class="badge" style="background:{color};">{plastic_type} {display_recycling_code}</span>
+                  <div class="fullname">{mapped_full_name}</div>
+                  <div class="barlabel"><span>Confidence</span><span>{confidence:.1f}%</span></div>
+                  <div class="bar" role="progressbar" aria-valuenow="{confidence:.0f}" aria-valuemin="0" aria-valuemax="100">
+                    <div style="width:{confidence}%;"></div>
+                  </div>
+                  <div class="grid">
+                    <div class="tile {tile_class}"><small>Recyclability</small><b>{icon} {recyclability_display}</b></div>
+                    <div class="tile {accept_class}"><small>Curbside pickup</small><b>{accept_text}</b></div>
+                    <div class="tile"><small>Estimated value</small><b>💰 {display_content["material_value"]}</b></div>
+                  </div>
                 </div>
-                """, unsafe_allow_html=True)
+                """)
 
-            st.markdown("#### 💰 Material Value:")
-            st.info(display_content["material_value"])
+                st.markdown("#### Common items")
+                chips = "".join(f'<span class="chip">{i}</span>' for i in display_content["common_items"])
+                html(f'<div class="chips">{chips}</div>')
 
-            if "Accepted" in display_content["acceptance"]:
-                st.success(display_content["acceptance"])
-            else:
-                st.warning(display_content["acceptance"])
+                st.markdown("#### How to recycle")
+                html(f'<div class="note">{display_content["instructions"]}</div>')
+
+                st.markdown("#### Tips")
+                tips = "".join(f"<li>{t}</li>" for t in display_content["tips"])
+                html(f'<ul class="tips">{tips}</ul>')
 
 # ============================================
 # PAGE: STATISTICS
 # ============================================
+elif st.session_state.current_page == PAGES[1]:
+    st.markdown("## System statistics")
+    st.caption("Live numbers from the SmartSort-AI backend.")
 
-elif st.session_state.current_page == "📊 Statistics":
-    st.markdown("## 📊 System Statistics")
-    
     stats_data = get_stats()
-    
-    if stats_data and stats_data.get('success'):
-        stats = stats_data['statistics']
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.markdown(f"""
-            <div class="stat-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <p class="stat-number">{stats['total_classifications']}</p>
-                <p class="stat-label">Total Classifications</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div class="stat-box" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <p class="stat-number">{stats['recent_activity_24h']}</p>
-                <p class="stat-label">Last 24 Hours</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown(f"""
-            <div class="stat-box" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                <p class="stat-number">{stats['average_confidence']*100:.1f}%</p>
-                <p class="stat-label">Avg Confidence</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col4:
-            st.markdown(f"""
-            <div class="stat-box" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                <p class="stat-number">{stats['total_facilities']}</p>
-                <p class="stat-label">Facilities</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("### 📈 Classifications by Plastic Type")
-        
-        by_type = stats.get('classifications_by_type', {})
+
+    if stats_data and stats_data.get("success"):
+        stats = stats_data["statistics"]
+        cards = [
+            (stats["total_classifications"], "Total classifications"),
+            (stats["recent_activity_24h"], "Last 24 hours"),
+            (f"{stats['average_confidence'] * 100:.1f}%", "Average confidence"),
+            (stats["total_facilities"], "Facilities"),
+        ]
+        cols = st.columns(4)
+        for col, (n, label) in zip(cols, cards):
+            with col:
+                html(f'<div class="stat"><div class="n">{n}</div><div class="l">{label}</div></div>')
+
+        st.markdown("#### Classifications by plastic type")
+        by_type = stats.get("classifications_by_type", {})
         if by_type:
-            col1, col2, col3 = st.columns(3)
-            
+            cols = st.columns(3)
             for idx, (plastic_type, count) in enumerate(by_type.items()):
                 color = get_color_for_type(plastic_type)
-                col = [col1, col2, col3][idx % 3]
-                
-                with col:
-                    st.markdown(f"""
-                    <div style="background: {color}; color: white; padding: 1.5rem; border-radius: 10px; text-align: center;">
-                        <h2 style="margin:0;">{count}</h2>
-                        <p style="margin:0.5rem 0 0 0;">{plastic_type}</p>
+                with cols[idx % 3]:
+                    html(f"""
+                    <div class="stat" style="border-top:4px solid {color};">
+                      <div class="n">{count}</div><div class="l">{plastic_type}</div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """)
         else:
-            st.info("No classification data yet. Start classifying plastics!")
-    
+            st.info("No classifications yet. Classify a plastic item to get started.")
     else:
-        st.warning("Unable to fetch statistics")
+        st.warning("Statistics are unavailable right now. Check the backend status in the sidebar and try again.")
 
 # ============================================
 # PAGE: LEARN MORE
 # ============================================
+elif st.session_state.current_page == PAGES[2]:
+    st.markdown("## Learn about plastic recycling")
+    st.caption("Quick reference for sorting and preparing plastics.")
 
-elif st.session_state.current_page == "📖 Learn More":
-    st.markdown("## 📖 Learn About Plastic Recycling")
-    
-    tab1, tab2, tab3 = st.tabs(["♻️ Plastic Types", "🌍 Environmental Impact", "💡 Best Practices"])
-    
+    tab1, tab2, tab3 = st.tabs(["♻️ Plastic types", "🌍 Environmental impact", "💡 Best practices"])
+
     with tab1:
-        st.markdown("""
-        ### Understanding Plastic Recycling Codes
-        
-        #### PET (#1) - Polyethylene Terephthalate
-        - **Most common:** Water bottles, soda bottles
-        - **Recyclability:** ✅ High - widely recycled
-        - **Becomes:** New bottles, fleece, carpet, fiberfill
-        
-        #### HDPE (#2) - High-Density Polyethylene
-        - **Most common:** Milk jugs, detergent bottles
-        - **Recyclability:** ✅ High - very valuable
-        - **Becomes:** Plastic lumber, pipes, new containers
-        
-        #### OTHER (#7) - Mixed Plastics
-        - **Most common:** Various composite materials
-        - **Recyclability:** ⚠️ Variable - check locally
-        - **Becomes:** Depends on specific material
-        """)
-    
+        with st.container(border=True):
+            st.markdown("""
+#### PET (#1): Polyethylene Terephthalate
+- **Most common:** Water bottles, soda bottles
+- **Recyclability:** ✅ High, widely recycled
+- **Becomes:** New bottles, fleece, carpet, fiberfill
+
+#### HDPE (#2): High-Density Polyethylene
+- **Most common:** Milk jugs, detergent bottles
+- **Recyclability:** ✅ High, very valuable
+- **Becomes:** Plastic lumber, pipes, new containers
+
+#### OTHER (#7): Mixed Plastics
+- **Most common:** Various composite materials
+- **Recyclability:** ⚠️ Variable, check locally
+- **Becomes:** Depends on specific material
+            """)
+
     with tab2:
-        st.markdown("""
-        ### 🌍 Environmental Impact
-        
-        **Why Recycling Matters:**
-        - ♻️ Reduces landfill waste by 70%
-        - 🌳 Saves natural resources
-        - ⚡ Uses 88% less energy than virgin plastic production
-        - 💨 Reduces CO2 emissions significantly
-        
-        **Plastic in Numbers:**
-        - 🌊 8 million tons of plastic enter oceans yearly
-        - 🐢 100,000+ marine animals affected by plastic waste
-        - ⏰ Plastic takes 450+ years to decompose
-        - ♻️ Only 9% of plastic is recycled globally
-        """)
-    
+        with st.container(border=True):
+            st.markdown("""
+#### Why recycling matters
+- ♻️ Reduces landfill waste by 70%
+- 🌳 Saves natural resources
+- ⚡ Uses 88% less energy than virgin plastic production
+- 💨 Reduces CO2 emissions significantly
+
+#### Plastic in numbers
+- 🌊 8 million tons of plastic enter oceans yearly
+- 🐢 100,000+ marine animals affected by plastic waste
+- ⏰ Plastic takes 450+ years to decompose
+- ♻️ Only 9% of plastic is recycled globally
+            """)
+
     with tab3:
-        st.markdown("""
-        ### 💡 Recycling Best Practices
-        
-        **Before Recycling:**
-        1. ✨ Rinse containers clean
-        2. 🏷️ Remove labels when possible
-        3. 🚫 Remove caps (recycle separately if accepted)
-        4. 🥤 Flatten bottles to save space
-        
-        **What NOT to Recycle:**
-        - ❌ Food-contaminated plastics
-        - ❌ Plastic bags (take to special collection)
-        - ❌ Styrofoam (check for special programs)
-        - ❌ Mixed material items
-        
-        **Pro Tips:**
-        - 📍 Find your local recycling center
-        - 📱 Use this app to verify plastic types
-        - 🌟 When in doubt, check with your facility
-        - 🔄 Reduce and reuse before recycling
-        """)
+        with st.container(border=True):
+            st.markdown("""
+#### Before recycling
+1. ✨ Rinse containers clean
+2. 🏷️ Remove labels when possible
+3. 🚫 Remove caps (recycle separately if accepted)
+4. 🥤 Flatten bottles to save space
+
+#### What not to recycle
+- ❌ Food-contaminated plastics
+- ❌ Plastic bags (take to special collection)
+- ❌ Styrofoam (check for special programs)
+- ❌ Mixed material items
+
+#### Pro tips
+- 📍 Find your local recycling center
+- 📱 Use this app to verify plastic types
+- 🌟 When in doubt, check with your facility
+- 🔄 Reduce and reuse before recycling
+            """)
 
 # ============================================
 # FOOTER
 # ============================================
-
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #000000; padding: 2rem 0;">
-    <p style="margin: 0;">♻️ SmartSort-AI - AI-Powered Plastic Waste Classification</p>
-</div>
-""", unsafe_allow_html=True)
+html('<p class="muted" style="text-align:center; margin-top:2.5rem; font-size:.85rem;">♻️ SmartSort-AI · AI-powered plastic waste classification</p>')
